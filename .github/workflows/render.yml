@@ -1,0 +1,47 @@
+
+name: Little Wonders Animation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "animation.py"
+      - ".github/workflows/render.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Get project files
+        uses: actions/checkout@v4
+
+      - name: Install Blender and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg
+          blender --version
+
+      - name: Render animation
+        run: |
+          mkdir -p output
+          sed -i 's|/tmp/little_wonders.mp4|output/little_wonders.mp4|g' animation.py
+          blender --background --python animation.py
+
+      - name: Check video file
+        run: |
+          test -s output/little_wonders.mp4
+          ffprobe -v error -show_entries format=duration \
+            -of default=noprint_wrappers=1 output/little_wonders.mp4
+
+      - name: Save rendered video
+        uses: actions/upload-artifact@v4
+        with:
+          name: little-wonders-video
+          path: output/little_wonders.mp4
+          if-no-files-found: error
+          retention-days: 7
